@@ -25,8 +25,36 @@ app.post("/", async (req, res) => {
     res.status(500).send({ message: "Password do not match" });
   } else {
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log(hashedPassword);
-    res.status(201).send(JSON.stringify(req.body));
+
+    pool.query(
+      `SELECT * FROM users
+      WHERE email = $1`,
+      [email],
+      (err, results) => {
+        if (err) {
+          throw err;
+        }
+
+        if (results.rows.length > 0) {
+          res.status(500).send({ message: "Email already registered" });
+        } else {
+          pool.query(
+            `INSERT INTO users (username, email, password)
+            VALUES ($1, $2, $3)
+            RETURNING id, password`,
+            [username, email, hashedPassword],
+            (err, results) => {
+              if (err) {
+                throw err;
+              }
+              console.log(results.rows);
+              console.log("new user registered");
+              res.status(201).send({ message: "User Successfully created" });
+            }
+          );
+        }
+      }
+    );
   }
 });
 
