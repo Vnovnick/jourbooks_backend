@@ -6,16 +6,14 @@ const { pool } = require("./dbConfig");
 const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send({ message: "yes" });
 });
 
-app.post("/", (req, res) => {
-  // const { username, email, password, confirmPassword } = req.body;
-  console.log(req.body);
-  // console.log({ username, email, password, confirmPassword });
-  //   res.send({ username, email, password, confirmPassword })
+app.post("/", async (req, res) => {
+  const { username, email, password, confirmPassword } = req.body;
 
   if (!username || !email || !password || !confirmPassword) {
     res.status(500).send({ message: "Please enter all fields" });
@@ -26,9 +24,9 @@ app.post("/", (req, res) => {
   } else if (password !== confirmPassword) {
     res.status(500).send({ message: "Password do not match" });
   } else {
-    const hashedPassword = bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     console.log(hashedPassword);
-    res.status(201).send({ message: "Success" });
+    res.status(201).send(JSON.stringify(req.body));
   }
 });
 
