@@ -12,7 +12,40 @@ app.get("/", (req, res) => {
   res.send({ message: "yes" });
 });
 
-app.post("/", async (req, res) => {
+// check if user exists on login
+app.get("/login", async (req, res) => {
+  const { email, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  pool.query(
+    `SELECT * FROM user
+    WHERE email = $1`,
+    [email],
+    (err, results) => {
+      if (err) {
+        throw err;
+      }
+
+      if (results.rows.length === 0) {
+        res
+          .status(400)
+          .send({ message: "An account with this email does not exist." });
+      } else {
+        const retrievedUser = results[0];
+        console.log("retrievedpass", retrievedUser.password);
+        console.log("passInput", hashedPassword);
+        if (retrievedUser.password === hashedPassword) {
+          res.send(200).send(retrievedUser);
+        } else {
+          res.status(401).send({ message: "Incorrect Password" });
+        }
+      }
+    }
+  );
+});
+
+// add new user
+app.post("/register", async (req, res) => {
   const { username, email, password, confirmPassword } = req.body;
 
   // commenting out validation since its handled in the svelte action
@@ -37,7 +70,9 @@ app.post("/", async (req, res) => {
       }
 
       if (results.rows.length > 0) {
-        res.status(500).send({ message: "Email already registered" });
+        res
+          .status(500)
+          .send({ message: "An account with this email already exists." });
       } else {
         pool.query(
           `INSERT INTO users (username, email, password)
