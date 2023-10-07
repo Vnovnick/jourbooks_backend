@@ -8,18 +8,13 @@ const PORT = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send({ message: "yes" });
-});
-
 // check if user exists on login
-app.get("/login", async (req, res) => {
+app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
 
   pool.query(
-    `SELECT * FROM user
-    WHERE email = $1`,
+    `SELECT * FROM users
+      WHERE email = $1`,
     [email],
     (err, results) => {
       if (err) {
@@ -31,11 +26,10 @@ app.get("/login", async (req, res) => {
           .status(400)
           .send({ message: "An account with this email does not exist." });
       } else {
-        const retrievedUser = results[0];
-        console.log("retrievedpass", retrievedUser.password);
-        console.log("passInput", hashedPassword);
-        if (retrievedUser.password === hashedPassword) {
-          res.send(200).send(retrievedUser);
+        const retrievedUser = results.rows[0];
+        if (bcrypt.compare(password, retrievedUser.password)) {
+          // for some reason, sending status crashes and gives "cannot set headers after they are sent to client" error
+          res.send(retrievedUser);
         } else {
           res.status(401).send({ message: "Incorrect Password" });
         }
