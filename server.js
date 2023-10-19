@@ -8,6 +8,30 @@ const PORT = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+app.get("/user/:id", async (req, res) => {
+  const id = req.params.id;
+
+  pool.query(
+    `SELECT * FROM users
+    WHERE id = $1`,
+    [id],
+    (err, results) => {
+      if (err) {
+        throw err;
+      }
+
+      if (results.rows.length === 0) {
+        res
+          .status(400)
+          .send({ message: "An account with this email does not exist." });
+      } else {
+        const retrievedUser = results.rows[0];
+        res.send(retrievedUser);
+      }
+    }
+  );
+});
+
 // check if user exists on login
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
