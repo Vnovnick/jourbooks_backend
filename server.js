@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.get("/user/:id", async (req, res) => {
+app.get("/v1/user/:id", async (req, res) => {
   const id = req.params.id;
 
   pool.query(
@@ -33,7 +33,7 @@ app.get("/user/:id", async (req, res) => {
 });
 
 // check if user exists on login
-app.post("/login", async (req, res) => {
+app.post("/v1/login", async (req, res) => {
   const { email, password } = req.body;
 
   pool.query(
@@ -63,7 +63,7 @@ app.post("/login", async (req, res) => {
 });
 
 // add new user
-app.post("/register", async (req, res) => {
+app.post("/v1/register", async (req, res) => {
   const { username, email, password, confirmPassword } = req.body;
 
   // commenting out validation since its handled in the svelte action
