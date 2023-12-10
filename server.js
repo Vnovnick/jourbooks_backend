@@ -10,12 +10,9 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(
   cors({
-    methods: "GET,POST,PATCH,DELETE,OPTIONS",
-    optionsSuccessStatus: 200,
-    origin: "http://localhost:3000",
+    origin: "http://127.0.0.1:5173",
   })
 );
-app.options("*", cors());
 
 // user endpoints
 app.get("/v1/user/:id", async (req, res) => {
@@ -113,6 +110,26 @@ app.post("/v1/book/shelve_read/:user_id", async (req, res) => {
   const userId = req.params.user_id;
   const { author, publicationYear, title, olid, pageCount, rating } = req.body;
 
+  const saveToUserBooksReadTable = (id, bookId, numRating) => {
+    pool.query(
+      `
+      INSERT INTO user_books_read (user_id, book_id, rating)
+      VALUES ($1, $2, $3)
+      `,
+      [id, bookId, numRating],
+      (junctErr, junctRes) => {
+        if (junctErr) {
+          console.log(junctErr);
+          res
+            .status(500)
+            .send({ message: "Error Adding User-Book relationship" });
+        }
+        console.log(`new read book added for ${id}`);
+        res.status(201).send({ message: "Book added to Read shelf" });
+      }
+    );
+  };
+
   pool.query(
     `SELECT * FROM books
     WHERE olid = $1`,
@@ -136,32 +153,15 @@ app.post("/v1/book/shelve_read/:user_id", async (req, res) => {
               console.log(insertErr);
               res.status(500).send({ message: "Error Inserting book" });
             }
-            console.log("book results after insertion", insertRes.rows);
-            console.log("new book added");
+            console.log(`${title} by ${author} added into books table`);
             localBookId = insertRes.rows[0].id;
+            saveToUserBooksReadTable(userId, localBookId, rating);
           }
         );
       } else {
         localBookId = findRes.rows[0].id;
+        saveToUserBooksReadTable(userId, localBookId, rating);
       }
-
-      pool.query(
-        `
-        INSERT INTO user_books_read (user_id, book_id, rating)
-        VALUES ($1, $2, $3)
-        `,
-        [userId, localBookId, rating],
-        (junctErr, junctRes) => {
-          if (junctErr) {
-            console.log(junctErr);
-            res
-              .status(500)
-              .send({ message: "Error Adding User-Book relationship" });
-          }
-          console.log(`new read book added for ${userId}`);
-          res.status(201).send({ message: "Book added to Read shelf" });
-        }
-      );
     }
   );
 });
