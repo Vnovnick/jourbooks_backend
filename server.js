@@ -166,6 +166,25 @@ app.post("/v1/book/shelve_read/:user_id", async (req, res) => {
   );
 });
 
+// TODO needs to be tested and new call in client
+app.get("/v1/book/read/:user_id", async (req, res) => {
+  const id = req.params.user_id;
+
+  pool.query(
+    `SELECT id,title,author,publication_year,olid,page_count,rating FROM books 
+    INNER JOIN (select book_id, rating from user_books_read where user_id=$1) as urb 
+    ON books.id = urb.book_id;`,
+    [id],
+    (err, results) => {
+      if (err) {
+        res.status(500).send({ message: "Error retrieving read books." });
+      }
+
+      return results.rows;
+    }
+  );
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
