@@ -171,16 +171,13 @@ app.get("/v1/book/read/:user_id", async (req, res) => {
   const id = req.params.user_id;
 
   pool.query(
-    `SELECT id,title,author,publication_year,olid,page_count,rating FROM books 
-    INNER JOIN (select book_id, rating from user_books_read where user_id=$1) as urb 
-    ON books.id = urb.book_id;`,
+    `SELECT id,title,author,publication_year,olid,page_count,rating FROM books INNER JOIN (SELECT book_id, rating FROM user_books_read WHERE user_id=$1) as urb ON books.id = urb.book_id`,
     [id],
     (err, results) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving read books." });
       }
-
-      return results.rows;
+      res.status(200).send(results.rows);
     }
   );
 });
