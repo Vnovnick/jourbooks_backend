@@ -105,18 +105,19 @@ app.post("/v1/register", async (req, res) => {
 });
 
 // book endpoints
-app.post("/v1/book/shelve_read/:user_id", async (req, res) => {
+app.post("/v1/book/shelve/:user_id", async (req, res) => {
   // expect request to contain userid, book info (olid, title, author, page count, publication year), and rating
   const userId = req.params.user_id;
-  const { author, publicationYear, title, olid, pageCount, rating } = req.body;
+  const { author, publicationYear, title, olid, pageCount, rating, shelfType } =
+    req.body;
 
-  const saveToUserBooksReadTable = (id, bookId, numRating) => {
+  const saveToUserBooksReadTable = (id, bookId, numRating, assignedShelf) => {
     pool.query(
       `
-      INSERT INTO user_books_read (user_id, book_id, rating)
-      VALUES ($1, $2, $3)
+      INSERT INTO user_shelved_books (user_id, book_id, rating, shelf_type)
+      VALUES ($1, $2, $3, $4)
       `,
-      [id, bookId, numRating],
+      [id, bookId, numRating, assignedShelf],
       (junctErr, junctRes) => {
         if (junctErr) {
           console.log(junctErr);
@@ -155,12 +156,12 @@ app.post("/v1/book/shelve_read/:user_id", async (req, res) => {
             }
             console.log(`${title} by ${author} added into books table`);
             localBookId = insertRes.rows[0].id;
-            saveToUserBooksReadTable(userId, localBookId, rating);
+            saveToUserBooksReadTable(userId, localBookId, rating, shelfType);
           }
         );
       } else {
         localBookId = findRes.rows[0].id;
-        saveToUserBooksReadTable(userId, localBookId, rating);
+        saveToUserBooksReadTable(userId, localBookId, rating, shelfType);
       }
     }
   );
@@ -171,13 +172,13 @@ app.get("/v1/book/read/:user_id", async (req, res) => {
   const id = req.params.user_id;
 
   pool.query(
-    `SELECT id,title,author,publication_year,olid,page_count,rating FROM books INNER JOIN (SELECT book_id, rating FROM user_books_read WHERE user_id=$1) as urb ON books.id = urb.book_id`,
+    `SELECT id,title,author,publication_year,olid,page_count,rating,shelf_type FROM books INNER JOIN (SELECT book_id,rating,shelf_type FROM user_shelved_books WHERE user_id=$1) as urb ON books.id = urb.book_id`,
     [id],
-    (err, results) => {
+    async (err, results) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving read books." });
       }
-      res.status(200).send(results.rows);
+      res.status(200).send(results ? results.rows : []);
     }
   );
 });
