@@ -56,7 +56,6 @@ app.post("/v1/login", async (req, res) => {
 
       const retrievedUser = results.rows[0];
       if (bcrypt.compare(password, retrievedUser.password)) {
-        // for some reason, sending status crashes and gives "cannot set headers after they are sent to client" error
         res.send(retrievedUser);
       } else {
         res.status(401).send({ message: "Incorrect Password" });
@@ -106,7 +105,6 @@ app.post("/v1/register", async (req, res) => {
 
 // book endpoints
 app.post("/v1/book/shelve/:user_id", async (req, res) => {
-  // expect request to contain userid, book info (olid, title, author, page count, publication year), and rating
   const userId = req.params.user_id;
   const { author, publicationYear, title, olid, pageCount, rating, shelfType } =
     req.body;
@@ -131,6 +129,8 @@ app.post("/v1/book/shelve/:user_id", async (req, res) => {
     );
   };
 
+  // temp fix for missing pageCounts (DB only takes integer type)
+  const pageCountCheck = pageCount === "" ? 0 : pageCount;
   pool.query(
     `SELECT * FROM books
     WHERE olid = $1`,
@@ -142,19 +142,20 @@ app.post("/v1/book/shelve/:user_id", async (req, res) => {
       }
 
       let localBookId = "";
-      if (findRes.rows.length === 0) {
+      if (findRes.rows.length < 1) {
         pool.query(
           `
           INSERT INTO books(author, publication_year, title, olid, page_count)
           VALUES ($1, $2, $3, $4, $5)
           RETURNING id`,
-          [author, publicationYear, title, olid, pageCount],
+          [author, publicationYear, title, olid, pageCountCheck],
           (insertErr, insertRes) => {
             if (insertErr) {
               console.log(insertErr);
               res.status(500).send({ message: "Error Inserting book" });
             }
             console.log(`${title} by ${author} added into books table`);
+            // TODO some issue when trying to save books that already exist in DB - check for duplicates and think about how to handle them
             localBookId = insertRes.rows[0].id;
             saveToUserBooksReadTable(userId, localBookId, rating, shelfType);
           }
@@ -167,7 +168,6 @@ app.post("/v1/book/shelve/:user_id", async (req, res) => {
   );
 });
 
-// TODO needs to be tested and new call in client
 app.get("/v1/book/read/:user_id", async (req, res) => {
   const id = req.params.user_id;
 
