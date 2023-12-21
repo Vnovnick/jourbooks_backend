@@ -106,8 +106,16 @@ app.post("/v1/register", async (req, res) => {
 // book endpoints
 app.post("/v1/book/shelve/:user_id", async (req, res) => {
   const userId = req.params.user_id;
-  const { author, publicationYear, title, olid, pageCount, rating, shelfType } =
-    req.body;
+  const {
+    author,
+    publicationYear,
+    title,
+    olid,
+    pageCount,
+    rating,
+    shelfType,
+    coverKey,
+  } = req.body;
 
   const saveToUserBooksReadTable = (id, bookId, numRating, assignedShelf) => {
     pool.query(
@@ -145,10 +153,10 @@ app.post("/v1/book/shelve/:user_id", async (req, res) => {
       if (findRes.rows.length < 1) {
         pool.query(
           `
-          INSERT INTO books(author, publication_year, title, olid, page_count)
-          VALUES ($1, $2, $3, $4, $5)
+          INSERT INTO books(author, publication_year, title, olid, page_count, cover_key)
+          VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING id`,
-          [author, publicationYear, title, olid, pageCountCheck],
+          [author, publicationYear, title, olid, pageCountCheck, coverKey],
           (insertErr, insertRes) => {
             if (insertErr) {
               console.log(insertErr);
@@ -157,12 +165,24 @@ app.post("/v1/book/shelve/:user_id", async (req, res) => {
             console.log(`${title} by ${author} added into books table`);
             // TODO some issue when trying to save books that already exist in DB - check for duplicates and think about how to handle them
             localBookId = insertRes.rows[0].id;
-            saveToUserBooksReadTable(userId, localBookId, rating, shelfType);
+            saveToUserBooksReadTable(
+              userId,
+              localBookId,
+              rating,
+              shelfType,
+              coverKey
+            );
           }
         );
       } else {
         localBookId = findRes.rows[0].id;
-        saveToUserBooksReadTable(userId, localBookId, rating, shelfType);
+        saveToUserBooksReadTable(
+          userId,
+          localBookId,
+          rating,
+          shelfType,
+          coverKey
+        );
       }
     }
   );
@@ -172,7 +192,7 @@ app.get("/v1/book/read/:user_id", async (req, res) => {
   const id = req.params.user_id;
 
   pool.query(
-    `SELECT id,title,author,publication_year,olid,page_count,rating,shelf_type FROM books INNER JOIN (SELECT book_id,rating,shelf_type FROM user_shelved_books WHERE user_id=$1) as urb ON books.id = urb.book_id`,
+    `SELECT id,title,author,publication_year,olid,page_count,cover_key,rating,shelf_type FROM books INNER JOIN (SELECT book_id,rating,shelf_type FROM user_shelved_books WHERE user_id=$1) as urb ON books.id = urb.book_id`,
     [id],
     async (err, results) => {
       if (err) {
