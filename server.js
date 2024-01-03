@@ -188,7 +188,7 @@ app.post("/v1/book/shelve/:user_id", async (req, res) => {
   );
 });
 
-app.get("/v1/book/read/:user_id", async (req, res) => {
+app.get("/v1/book/shelved/all/:user_id", async (req, res) => {
   const id = req.params.user_id;
 
   pool.query(
@@ -196,9 +196,29 @@ app.get("/v1/book/read/:user_id", async (req, res) => {
     [id],
     async (err, results) => {
       if (err) {
-        res.status(500).send({ message: "Error retrieving read books." });
+        res.status(500).send({ message: "Error retrieving shelved books." });
       }
       res.status(200).send(results ? results.rows : []);
+    }
+  );
+});
+
+app.get("/v1/book/shelved/:book_id", async (req, res) => {
+  const bookId = req.params.book_id;
+
+  pool.query(
+    `SELECT * FROM books WHERE id=$1`,
+    [bookId],
+    async (err, results) => {
+      if (err) {
+        res.status(500).send({ message: "Error retrieving book data." });
+      }
+
+      if (results.length === 0) {
+        res.status(404).send({ message: "No books found with matching id." });
+      } else {
+        res.status(200).send(results.rows[0]);
+      }
     }
   );
 });
