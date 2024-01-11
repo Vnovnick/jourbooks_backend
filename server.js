@@ -203,17 +203,16 @@ app.get("/v1/book/shelved/all/:user_id", async (req, res) => {
   );
 });
 
-app.get("/v1/book/shelved/:book_id", async (req, res) => {
-  const bookId = req.params.book_id;
+app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
+  const [bookId, userId] = req.params.user_book_id.split(":");
 
   pool.query(
-    `SELECT * FROM books WHERE id=$1`,
-    [bookId],
+    `SELECT id,title,author,publication_year,olid,page_count,cover_key,rating,shelf_type FROM books INNER JOIN (SELECT book_id,rating,shelf_type FROM user_shelved_books WHERE user_id=$1 AND book_id=$2) as urb ON books.id = urb.book_id`,
+    [userId, bookId],
     async (err, results) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving book data." });
       }
-
       if (results.length === 0) {
         res.status(404).send({ message: "No books found with matching id." });
       } else {
@@ -223,6 +222,47 @@ app.get("/v1/book/shelved/:book_id", async (req, res) => {
   );
 });
 
+// book - journal entries
+app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
+  const bookId = req.params.book_id;
+  const { text, title, userId } = req.body;
+  const currentDate = new Date().valueOf();
+
+  pool.query(
+    `
+    INSERT INTO book_journal_entries (text, title, createdat)
+    VALUES ($1, $2, $3)
+    RETURNING id
+    `,
+    [text, title, currentDate],
+    (postErr, postRes) => {
+      if (postErr) {
+        console.log(postErr);
+        res.status(500).send({ message: "Error saving journal entry." });
+      }
+      console.log(`new journal entry added`);
+      pool.query(
+        `
+        UPDATE user_shelved_books SET entry_ids = array_append(entry_ids, $1) 
+        WHERE user_id=$2 AND book_id=$3
+        `,
+        [postRes.rows[0].id, userId, bookId],
+        (updateErr, updateRes) => {
+          if (updateErr) {
+            console.log(updateErr);
+            res.status(500).send({
+              message: "Error updating joint table with new entry id.",
+            });
+          }
+          console.log("new post created and linekd to user's shelved books.");
+          res
+            .status(201)
+            .send({ message: "New journal entry successfully saved." });
+        }
+      );
+    }
+  );
+});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
