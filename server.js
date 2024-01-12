@@ -275,7 +275,7 @@ app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving entry ids" });
       } else {
-        if (!results.entry_ids) {
+        if (!results.rows[0].entry_ids) {
           res
             .status(404)
             .send({ message: "No journal entries found for this book" });
