@@ -3,6 +3,7 @@ const app = express();
 const bcrypt = require("bcrypt");
 const cors = require("cors");
 const { pool } = require("./dbConfig");
+const dayjs = require("dayjs");
 
 const PORT = process.env.PORT || 3000;
 
@@ -226,7 +227,7 @@ app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
 app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
   const bookId = req.params.book_id;
   const { text, title, userId } = req.body;
-  const currentDate = new Date().valueOf();
+  const currentDate = dayjs().valueOf();
 
   pool.query(
     `
@@ -273,28 +274,31 @@ app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
     async (err, results) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving entry ids" });
-      }
-      if (results.length === 0) {
-        res
-          .status(404)
-          .send({ message: "No journal entries found for this book" });
-      }
-      const ids = results.rows[0].entry_ids;
-      const convertedIds = JSON.stringify(ids)
-        .replace("[", "{")
-        .replace("]", "}");
-      pool.query(
-        `SELECT * FROM book_journal_entries WHERE id = ANY ($1)`,
-        [convertedIds],
-        (postsErr, postsResults) => {
-          if (postsErr) {
-            res
-              .status(500)
-              .send({ message: "Error retrieving matching posts" });
-          }
-          res.status(200).send(postsResults.rows);
+      } else {
+        if (!results.entry_ids) {
+          res
+            .status(404)
+            .send({ message: "No journal entries found for this book" });
+        } else {
+          const ids = results.rows[0].entry_ids;
+          const convertedIds = JSON.stringify(ids)
+            .replace("[", "{")
+            .replace("]", "}");
+          pool.query(
+            `SELECT * FROM book_journal_entries WHERE id = ANY ($1)`,
+            [convertedIds],
+            (postsErr, postsResults) => {
+              if (postsErr) {
+                res
+                  .status(500)
+                  .send({ message: "Error retrieving matching posts" });
+              } else {
+                res.status(200).send(postsResults ? postsResults.rows : []);
+              }
+            }
+          );
         }
-      );
+      }
     }
   );
 });
