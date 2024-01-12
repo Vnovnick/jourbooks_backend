@@ -276,9 +276,7 @@ app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
         res.status(500).send({ message: "Error retrieving entry ids" });
       } else {
         if (!results.rows[0].entry_ids) {
-          res
-            .status(404)
-            .send({ message: "No journal entries found for this book" });
+          res.status(200).send([]);
         } else {
           const ids = results.rows[0].entry_ids;
           const convertedIds = JSON.stringify(ids)
