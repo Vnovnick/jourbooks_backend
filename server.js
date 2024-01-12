@@ -263,6 +263,41 @@ app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
     }
   );
 });
+
+app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
+  const [bookId, userId] = req.params.user_book_id.split(":");
+
+  pool.query(
+    `SELECT entry_ids FROM user_shelved_books WHERE user_id=$1 AND book_id=$2`,
+    [userId, bookId],
+    async (err, results) => {
+      if (err) {
+        res.status(500).send({ message: "Error retrieving entry ids" });
+      }
+      if (results.length === 0) {
+        res
+          .status(404)
+          .send({ message: "No journal entries found for this book" });
+      }
+      const ids = results.rows[0].entry_ids;
+      const convertedIds = JSON.stringify(ids)
+        .replace("[", "{")
+        .replace("]", "}");
+      pool.query(
+        `SELECT * FROM book_journal_entries WHERE id = ANY ($1)`,
+        [convertedIds],
+        (postsErr, postsResults) => {
+          if (postsErr) {
+            res
+              .status(500)
+              .send({ message: "Error retrieving matching posts" });
+          }
+          res.status(200).send(postsResults.rows);
+        }
+      );
+    }
+  );
+});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
