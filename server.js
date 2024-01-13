@@ -231,7 +231,7 @@ app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
 
   pool.query(
     `
-    INSERT INTO book_journal_entries (text, title, createdat)
+    INSERT INTO book_journal_entries (text, title, created_at)
     VALUES ($1, $2, $3)
     RETURNING id
     `,
@@ -240,27 +240,28 @@ app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
       if (postErr) {
         console.log(postErr);
         res.status(500).send({ message: "Error saving journal entry." });
-      }
-      console.log(`new journal entry added`);
-      pool.query(
-        `
-        UPDATE user_shelved_books SET entry_ids = array_append(entry_ids, $1) 
-        WHERE user_id=$2 AND book_id=$3
-        `,
-        [postRes.rows[0].id, userId, bookId],
-        (updateErr, updateRes) => {
-          if (updateErr) {
-            console.log(updateErr);
-            res.status(500).send({
-              message: "Error updating joint table with new entry id.",
-            });
+      } else {
+        console.log(`new journal entry added`);
+        pool.query(
+          `
+          UPDATE user_shelved_books SET entry_ids = array_append(entry_ids, $1) 
+          WHERE user_id=$2 AND book_id=$3
+          `,
+          [postRes.rows[0].id, userId, bookId],
+          (updateErr, updateRes) => {
+            if (updateErr) {
+              console.log(updateErr);
+              res.status(500).send({
+                message: "Error updating joint table with new entry id.",
+              });
+            }
+            console.log("new post created and linekd to user's shelved books.");
+            res
+              .status(201)
+              .send({ message: "New journal entry successfully saved." });
           }
-          console.log("new post created and linekd to user's shelved books.");
-          res
-            .status(201)
-            .send({ message: "New journal entry successfully saved." });
-        }
-      );
+        );
+      }
     }
   );
 });
@@ -302,8 +303,7 @@ app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
 });
 
 app.delete("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
-  const [bookId, userId] = req.params.user_book_id.split(":");
-  const { id } = req.body;
+  const [bookId, userId, postId] = req.params.user_book_id.split(":");
 
   pool.query(
     `
@@ -311,7 +311,7 @@ app.delete("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
     SET entry_ids = array_remove(entry_ids, $1)
     WHERE user_id = $2 AND book_id = $3
   `,
-    [id, userId, bookId],
+    [postId, userId, bookId],
     (updateErr, updateRes) => {
       if (updateErr) {
         res.status(500).send({ message: "Error update user_shelved_books" });
@@ -321,7 +321,7 @@ app.delete("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
           DELETE FROM book_journal_entries
           WHERE id = $1
           `,
-          [id],
+          [postId],
           (delErr, delRes) => {
             if (delErr) {
               res.status(500).send({ message: "Error deleting post" });
