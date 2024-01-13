@@ -300,6 +300,40 @@ app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
     }
   );
 });
+
+app.delete("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
+  const [bookId, userId] = req.params.user_book_id.split(":");
+  const { id } = req.body;
+
+  pool.query(
+    `
+    UPDATE user_shelved_books
+    SET entry_ids = array_remove(entry_ids, $1)
+    WHERE user_id = $2 AND book_id = $3
+  `,
+    [id, userId, bookId],
+    (updateErr, updateRes) => {
+      if (updateErr) {
+        res.status(500).send({ message: "Error update user_shelved_books" });
+      } else {
+        pool.query(
+          `
+          DELETE FROM book_journal_entries
+          WHERE id = $1
+          `,
+          [id],
+          (delErr, delRes) => {
+            if (delErr) {
+              res.status(500).send({ message: "Error deleting post" });
+            } else {
+              res.status(200).send({ message: "Post successfully deleted" });
+            }
+          }
+        );
+      }
+    }
+  );
+});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
