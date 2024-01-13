@@ -23,3 +23,5 @@ This is the repo for the Express.js API that sends all of its queries to a local
 `book/shelved/post/:book_id` - POST - saves a journal entry post under a book the user has shelved
 
 `book/shelved/book_posts/:user_book_id` - GET - retrieves all journal entries corresponding to a book the user has saved
+
+`book/shelved/book_posts/:user_book_id` - DELETE - deletes journal entry from the database and detaches it from the user
