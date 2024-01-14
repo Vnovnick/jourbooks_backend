@@ -224,7 +224,9 @@ app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
 });
 
 // book - journal entries
-app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
+
+// add new journal entry
+app.post("/v1/book/shelved/journal/:book_id", async (req, res) => {
   const bookId = req.params.book_id;
   const { text, title, userId } = req.body;
   const currentDate = dayjs().valueOf();
@@ -266,8 +268,9 @@ app.post("/v1/book/shelved/post/:book_id", async (req, res) => {
   );
 });
 
-app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
-  const [bookId, userId] = req.params.user_book_id.split(":");
+// get all journal entries for a given book
+app.get("/v1/book/shelved/journal/:book_user_ids", async (req, res) => {
+  const [bookId, userId] = req.params.book_user_ids.split(":");
 
   pool.query(
     `SELECT entry_ids FROM user_shelved_books WHERE user_id=$1 AND book_id=$2`,
@@ -302,8 +305,9 @@ app.get("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
   );
 });
 
-app.delete("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
-  const [bookId, userId, postId] = req.params.user_book_id.split(":");
+// delete specific journal entry
+app.delete("/v1/book/shelved/journal/:book_user_post_ids", async (req, res) => {
+  const [bookId, userId, postId] = req.params.book_user_post_ids.split(":");
 
   pool.query(
     `
@@ -334,6 +338,30 @@ app.delete("/v1/book/shelved/book_posts/:user_book_id", async (req, res) => {
     }
   );
 });
+
+// patch specific journal entry
+app.patch("/v1/book/shelved/journal/:post_id", async (req, res) => {
+  const postId = req.params.post_id;
+  const { title, text } = req.body;
+  const editedAt = dayjs().valueOf();
+
+  pool.query(
+    `
+    UPDATE book_journal_entries
+    SET title = $1, text = $2, edited_at = $3
+    WHERE id = $4
+    `,
+    [title, text, editedAt, postId],
+    (updateErr, updateRes) => {
+      if (updateErr) {
+        res.status(500).send({ message: "Error patching journal entry" });
+      } else {
+        res.status(200).send({ message: "Succesfully patched journal entry!" });
+      }
+    }
+  );
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
