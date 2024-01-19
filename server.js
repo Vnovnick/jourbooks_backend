@@ -384,6 +384,8 @@ app.patch("/v1/book/shelved/journal/:post_id", async (req, res) => {
 });
 
 // book - reviews
+
+// post review
 app.post("/v1/book/shelved/review/:book_id", async (req, res) => {
   const bookId = req.params.book_id;
   const { text, title, userId } = req.body;
@@ -419,6 +421,31 @@ app.post("/v1/book/shelved/review/:book_id", async (req, res) => {
             }
           }
         );
+      }
+    }
+  );
+});
+
+// TODO test and add to frontend
+// patch review
+app.patch("/v1/book/shelved/review/:review_id", async (req, res) => {
+  const reviewId = req.params.review_id;
+  const { title, text } = req.body;
+  const editedAt = dayjs().valueOf();
+
+  pool.query(
+    `
+    UPDATE reviews
+    SET title = $1, text = $2, edited_at = $3
+    WHERE id = $4
+    `,
+    [title, text, editedAt, reviewId],
+    (updateErr, updateRes) => {
+      if (updateErr) {
+        console.log(updateErr);
+        res.status(500).send({ message: "Error updating review" });
+      } else {
+        res.status(200).send({ message: "Review patched successfully" });
       }
     }
   );
