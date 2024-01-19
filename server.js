@@ -208,7 +208,7 @@ app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
   const [bookId, userId] = req.params.user_book_id.split(":");
 
   pool.query(
-    `SELECT id,title,author,publication_year,olid,page_count,cover_key,rating,shelf_type FROM books INNER JOIN (SELECT book_id,rating,shelf_type FROM user_shelved_books WHERE user_id=$1 AND book_id=$2) as urb ON books.id = urb.book_id`,
+    `SELECT id,title,author,publication_year,olid,page_count,cover_key,rating,shelf_type,review_id FROM books INNER JOIN (SELECT book_id,rating,shelf_type,review_id FROM user_shelved_books WHERE user_id=$1 AND book_id=$2) as urb ON books.id = urb.book_id`,
     [userId, bookId],
     async (err, results) => {
       if (err) {
@@ -217,7 +217,28 @@ app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
       if (results.length === 0) {
         res.status(404).send({ message: "No books found with matching id." });
       } else {
-        res.status(200).send(results.rows[0]);
+        const bookData = results.rows[0];
+        pool.query(
+          `
+          SELECT * FROM reviews 
+          WHERE id = $1
+          `,
+          [bookData.review_id],
+          (revErr, revRes) => {
+            if (revErr) {
+              res
+                .status(500)
+                .send({ message: "Error retrieving matching review." });
+            } else {
+              const revData = revRes.rows[0];
+              console.log(revData);
+              delete bookData.review_id;
+              bookData.review = revData;
+              console.log(bookData);
+              res.status(200).send(bookData);
+            }
+          }
+        );
       }
     }
   );
@@ -357,6 +378,47 @@ app.patch("/v1/book/shelved/journal/:post_id", async (req, res) => {
         res.status(500).send({ message: "Error patching journal entry" });
       } else {
         res.status(200).send({ message: "Succesfully patched journal entry!" });
+      }
+    }
+  );
+});
+
+// book - reviews
+app.post("/v1/book/shelved/review/:book_id", async (req, res) => {
+  const bookId = req.params.book_id;
+  const { text, title, userId } = req.body;
+  const currentDate = dayjs().valueOf();
+
+  pool.query(
+    `
+    INSERT INTO reviews (title, text, created_at)
+    VALUES ($1, $2, $3)
+    RETURNING id
+    `,
+    [title, text, currentDate],
+    (insertErr, insertRes) => {
+      if (insertErr) {
+        console.log(insertErr);
+        res.status(500).send({ message: "Error saving review." });
+      } else {
+        pool.query(
+          `
+          UPDATE user_shelved_books SET review_id = $1
+          WHERE user_id = $2 AND book_id = $3
+          `,
+          [insertRes.rows[0].id, userId, bookId],
+          (updateErr, updateRes) => {
+            if (updateErr) {
+              console.log(updateErr);
+              res
+                .status(500)
+                .send({ message: "Error linking review to shelved book." });
+            } else {
+              console.log("Review saved");
+              res.status(201).send({ message: "Review successfully saved." });
+            }
+          }
+        );
       }
     }
   );
