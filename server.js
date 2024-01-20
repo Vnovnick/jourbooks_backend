@@ -231,10 +231,8 @@ app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
                 .send({ message: "Error retrieving matching review." });
             } else {
               const revData = revRes.rows[0];
-              console.log(revData);
               delete bookData.review_id;
               bookData.review = revData;
-              console.log(bookData);
               res.status(200).send(bookData);
             }
           }
