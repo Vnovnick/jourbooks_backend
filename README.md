@@ -27,3 +27,13 @@ This is the repo for the Express.js API that sends all of its queries to a local
 `book/shelved/journal/:book_user_ids` - GET - retrieves all journal entries corresponding to a book the user has saved
 
 `book/shelved/journal/:book_user_post_ids` - DELETE - deletes journal entry from the database and detaches it from the user
+
+`book/shelved/journal/:post_id` - PATCH - updates journal entry and adds an `edited_at` value to be displayed along with the `created_at` value in the frontend
+
+### Review Endpoints (Belonging to a specific book)
+
+_Note: review is retrieved in the `book/shelved/:user_book_id` endpoint together with the rest of the book info._
+
+`book/shelved/review/:book_id` - POST - saves a review under a book the user has shelved
+
+`book/shelved/review/:review_id` - PATCH - updates review and attaches an `edited_at` value that gets displayed along with the `created_at` value in the frontend
