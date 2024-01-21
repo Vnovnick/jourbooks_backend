@@ -424,7 +424,6 @@ app.post("/v1/book/shelved/review/:book_id", async (req, res) => {
   );
 });
 
-// TODO test and add to frontend
 // patch review
 app.patch("/v1/book/shelved/review/:review_id", async (req, res) => {
   const reviewId = req.params.review_id;
@@ -448,6 +447,50 @@ app.patch("/v1/book/shelved/review/:review_id", async (req, res) => {
     }
   );
 });
+
+app.delete(
+  "/v1/book/shelved/review/:book_user_review_ids",
+  async (req, res) => {
+    const [bookId, userId, reviewId] =
+      req.params.book_user_review_ids.split(":");
+
+    pool.query(
+      `
+    UPDATE user_shelved_books
+    SET review_id = NULL
+    WHERE user_id = $1 AND book_id = $2
+    `,
+      [userId, bookId],
+      (updateErr) => {
+        if (updateErr) {
+          console.log("Error removing from user_shelved_books");
+          res
+            .status(500)
+            .send({ message: "Error updating user_shelved_books" });
+        } else {
+          pool.query(
+            `
+          DELETE FROM reviews
+          WHERE id = $1
+          `,
+            [reviewId],
+            (delErr) => {
+              if (delErr) {
+                console.log("Error with deletion");
+                res.status(500).send({ message: "Error deleting review" });
+              } else {
+                console.log("deleted review success");
+                res
+                  .status(200)
+                  .send({ message: "Review successfully deleted" });
+              }
+            }
+          );
+        }
+      }
+    );
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

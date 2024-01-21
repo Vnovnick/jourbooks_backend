@@ -32,8 +32,10 @@ This is the repo for the Express.js API that sends all of its queries to a local
 
 ### Review Endpoints (Belonging to a specific book)
 
-_Note: review is retrieved in the `book/shelved/:user_book_id` endpoint together with the rest of the book info._
+_Note: a review is retrieved in the `book/shelved/:user_book_id` endpoint together with the rest of the book info. A request for all a given user's reviews will be added at a later time._
 
 `book/shelved/review/:book_id` - POST - saves a review under a book the user has shelved
 
 `book/shelved/review/:review_id` - PATCH - updates review and attaches an `edited_at` value that gets displayed along with the `created_at` value in the frontend
+
+`book/shelved/review/:book_user_review_ids` - DELETE - deleted review and detaches it from the user
