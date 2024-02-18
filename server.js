@@ -11,7 +11,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://127.0.0.1:5173",
+    origin: "http://localhost:5173",
   })
 );
 
@@ -26,15 +26,15 @@ app.get("/v1/user/:id", async (req, res) => {
     (err, results) => {
       if (err) {
         throw err;
-      }
-
-      if (results.rows.length === 0) {
-        res
-          .status(400)
-          .send({ message: "An account with this email does not exist." });
       } else {
-        const retrievedUser = results.rows[0];
-        res.send(retrievedUser);
+        if (results.rows.length === 0) {
+          res
+            .status(400)
+            .send({ message: "An account with this email does not exist." });
+        } else {
+          const retrievedUser = results.rows[0];
+          res.send(retrievedUser);
+        }
       }
     }
   );
