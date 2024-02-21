@@ -247,16 +247,16 @@ app.get("/v1/book/shelved/:user_book_id", async (req, res) => {
 // add new journal entry
 app.post("/v1/book/shelved/journal/:book_id", async (req, res) => {
   const bookId = req.params.book_id;
-  const { text, title, userId } = req.body;
+  const { text, title, userId, pageNumber, shelfType } = req.body;
   const currentDate = dayjs().valueOf();
 
   pool.query(
     `
-    INSERT INTO book_journal_entries (text, title, created_at)
-    VALUES ($1, $2, $3)
+    INSERT INTO book_journal_entries (text, title, created_at, page_number, shelf_type)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING id
     `,
-    [text, title, currentDate],
+    [text, title, currentDate, pageNumber, shelfType],
     (postErr, postRes) => {
       if (postErr) {
         console.log(postErr);
