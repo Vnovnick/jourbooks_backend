@@ -26,6 +26,8 @@ This is the repo for the Express.js API that sends all of its queries to a local
 
 `book/shelved/journal/:book_user_ids` - GET - retrieves all journal entries corresponding to a book the user has saved
 
+`book/shelved/journal/all/:user_id` - GET - retrieves all journal entries belonging to the specified user
+
 `book/shelved/journal/:book_user_post_ids` - DELETE - deletes journal entry from the database and detaches it from the user
 
 `book/shelved/journal/:post_id` - PATCH - updates journal entry and adds an `edited_at` value to be displayed along with the `created_at` value in the frontend

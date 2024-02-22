@@ -329,18 +329,14 @@ app.get("/v1/book/shelved/journal/all/:user_id", async (req, res) => {
   const userId = req.params.user_id;
 
   pool.query(
-    `SELECT entry_ids FROM user_shelved_books WHERE user_id=$1`,
+    `SELECT entry_ids, book_id FROM user_shelved_books WHERE user_id=$1`,
     [userId],
     async (err, results) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving entry ids" });
       } else {
-        const flattenedIds = results.rows
-          .map((row) => {
-            if (row.entry_ids) return row.entry_ids;
-          })
-          .flat()
-          .filter((val) => val);
+        const filteredRows = results.rows.filter((row) => row.entry_ids);
+        const flattenedIds = filteredRows.flatMap((row) => row.entry_ids);
         if (flattenedIds.length === 0) {
           res.status(200).send([]);
         } else {
@@ -356,7 +352,22 @@ app.get("/v1/book/shelved/journal/all/:user_id", async (req, res) => {
                   .status(500)
                   .send({ message: "Error retrieving matching posts" });
               } else {
-                res.status(200).send(postsResults ? postsResults.rows : []);
+                const convRes = filteredRows.map((row) => ({
+                  book_id: row.book_id,
+                  entries: row.entry_ids
+                    .map((entryId) => {
+                      const matchingPost = postsResults.rows.find(
+                        (post) => post.id === entryId
+                      );
+                      if (matchingPost) {
+                        return matchingPost;
+                      }
+                    })
+                    .sort(
+                      (a, b) => Number(b.created_at) - Number(a.created_at)
+                    ),
+                }));
+                res.status(200).send(postsResults ? convRes : []);
               }
             }
           );
