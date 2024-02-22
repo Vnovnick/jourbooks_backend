@@ -324,6 +324,48 @@ app.get("/v1/book/shelved/journal/:book_user_ids", async (req, res) => {
   );
 });
 
+// get all journal entries for a specific user
+app.get("/v1/book/shelved/journal/all/:user_id", async (req, res) => {
+  const userId = req.params.user_id;
+
+  pool.query(
+    `SELECT entry_ids FROM user_shelved_books WHERE user_id=$1`,
+    [userId],
+    async (err, results) => {
+      if (err) {
+        res.status(500).send({ message: "Error retrieving entry ids" });
+      } else {
+        const flattenedIds = results.rows
+          .map((row) => {
+            if (row.entry_ids) return row.entry_ids;
+          })
+          .flat()
+          .filter((val) => val);
+        if (flattenedIds.length === 0) {
+          res.status(200).send([]);
+        } else {
+          const convertedIds = JSON.stringify(flattenedIds)
+            .replace("[", "{")
+            .replace("]", "}");
+          pool.query(
+            `SELECT * FROM book_journal_entries WHERE id = ANY ($1)`,
+            [convertedIds],
+            (postsErr, postsResults) => {
+              if (postsErr) {
+                res
+                  .status(500)
+                  .send({ message: "Error retrieving matching posts" });
+              } else {
+                res.status(200).send(postsResults ? postsResults.rows : []);
+              }
+            }
+          );
+        }
+      }
+    }
+  );
+});
+
 // delete specific journal entry
 app.delete("/v1/book/shelved/journal/:book_user_post_ids", async (req, res) => {
   const [bookId, userId, postId] = req.params.book_user_post_ids.split(":");
@@ -361,16 +403,16 @@ app.delete("/v1/book/shelved/journal/:book_user_post_ids", async (req, res) => {
 // patch specific journal entry
 app.patch("/v1/book/shelved/journal/:post_id", async (req, res) => {
   const postId = req.params.post_id;
-  const { title, text } = req.body;
+  const { title, text, shelfType, pageNumber } = req.body;
   const editedAt = dayjs().valueOf();
 
   pool.query(
     `
     UPDATE book_journal_entries
-    SET title = $1, text = $2, edited_at = $3
-    WHERE id = $4
+    SET title = $1, text = $2, edited_at = $3, shelf_type = $4, page_number = $5
+    WHERE id = $6
     `,
-    [title, text, editedAt, postId],
+    [title, text, editedAt, shelfType, pageNumber, postId],
     (updateErr, updateRes) => {
       if (updateErr) {
         res.status(500).send({ message: "Error patching journal entry" });
