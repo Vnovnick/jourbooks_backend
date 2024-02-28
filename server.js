@@ -335,7 +335,9 @@ app.get("/v1/book/shelved/journal/all/:user_id", async (req, res) => {
       if (err) {
         res.status(500).send({ message: "Error retrieving entry ids" });
       } else {
-        const filteredRows = results.rows.filter((row) => row.entry_ids);
+        const filteredRows = results.rows.filter(
+          (row) => row.entry_ids && row.entry_ids.length > 0
+        );
         const flattenedIds = filteredRows.flatMap((row) => row.entry_ids);
         if (flattenedIds.length === 0) {
           res.status(200).send([]);
