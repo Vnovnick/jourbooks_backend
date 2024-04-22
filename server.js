@@ -48,18 +48,21 @@ app.post("/v1/login", async (req, res) => {
     `SELECT * FROM users
       WHERE email = $1`,
     [email],
-    (err, results) => {
+    async (err, results) => {
       if (err) {
-        res
-          .status(400)
-          .send({ message: "An account with this email does not exist." });
+        res.status(400).send({ message: "Error retrieving User info" });
       }
 
       const retrievedUser = results.rows[0];
-      if (bcrypt.compare(password, retrievedUser.password)) {
-        res.send(retrievedUser);
+      if (!retrievedUser) {
+        res.status(404).send({ message: "No Matching user with this email" });
       } else {
-        res.status(401).send({ message: "Incorrect Password" });
+        const valid = await bcrypt.compare(password, retrievedUser.password);
+        if (valid) {
+          res.send(retrievedUser);
+        } else {
+          res.status(401).send({ message: "Incorrect Password" });
+        }
       }
     }
   );
