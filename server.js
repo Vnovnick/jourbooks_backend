@@ -81,7 +81,7 @@ app.post("/v1/register", async (req, res) => {
 
       if (results.rows.length > 0) {
         res
-          .status(500)
+          .status(409)
           .send({ message: "An account with this email already exists." });
       } else {
         pool.query(
